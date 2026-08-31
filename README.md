@@ -15,6 +15,23 @@ Konto, keine gemeinsame Datenbank, kein gemeinsames Modulsystem).
 ## Stand
 
 Gerade erst angelegt. Noch keine Musiklogik — dieses Grundgerüst ist der Ausgangspunkt.
+**Noch kein Live-Deploy.** Der Deploy-Workflow ist eingerichtet, läuft aber erst, sobald
+die Secrets (siehe unten) im Repo hinterlegt sind.
+
+## Deploy einrichten (einmalig)
+
+Ein Merge auf `main` soll wie bei den anderen Cloudflare-Projekten automatisch
+ausliefern — Worker über `.github/workflows/worker-deploy.yml`, Frontend über
+Cloudflare Pages. Damit das läuft, fehlt noch:
+
+1. **Repo-Secrets** (GitHub → Settings → Secrets and variables → Actions):
+   `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` — dieselben Werte wie bei den
+   anderen TE-Tools-Projekten
+2. **Cloudflare Pages** einmalig mit diesem Repo verbinden (Pages-Projekt → Build-Output
+   `web/`, kein Build-Befehl)
+
+Ohne Schritt 1 bricht der Workflow beim Push kontrolliert mit klarer Fehlermeldung ab,
+statt einen halben Deploy zu hinterlassen.
 
 ## Technik
 

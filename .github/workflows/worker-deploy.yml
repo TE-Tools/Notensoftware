@@ -1,0 +1,45 @@
+name: Worker deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "worker/**"
+      - ".github/workflows/worker-deploy.yml"
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Secrets vorhanden?
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ] || [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN und/oder CLOUDFLARE_ACCOUNT_ID fehlen als Repo-Secrets. Abbruch statt halbem Deploy."
+            exit 1
+          fi
+
+      - name: Worker deployen
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy
+
+      - name: Rauchtest gegen die laufende API
+        run: |
+          for i in 1 2 3 4 5; do
+            status=$(curl -s -o /tmp/health.json -w "%{http_code}" https://notensoftware.thomaselsen84.workers.dev/api/health || echo "000")
+            if [ "$status" = "200" ]; then
+              echo "Worker antwortet:"
+              cat /tmp/health.json
+              exit 0
+            fi
+            echo "Versuch $i: HTTP $status, warte 5s …"
+            sleep 5
+          done
+          echo "::error::Worker antwortet nach dem Deploy nicht (kein HTTP 200 von /api/health)."
+          exit 1
