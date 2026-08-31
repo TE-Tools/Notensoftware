@@ -1,0 +1,8 @@
+{
+  "name": "Notensoftware",
+  "short_name": "Notensoftware",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#15152b",
+  "background_color": "#0c0c18"
+}

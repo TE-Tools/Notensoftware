@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#15152b">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  <title>Notensoftware</title>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🎼 <b>Notensoftware</b></div>
+  </header>
+
+  <main class="content">
+    <h1>MusicXML analysieren</h1>
+    <p>Erster Baustein: eine MusicXML-Datei hochladen und die enthaltenen Stimmen
+      sowie deren Tonumfang anzeigen. Kompositions-/Arrangement-Vorschläge folgen später.</p>
+
+    <form id="analyzeForm">
+      <input type="file" id="file" accept=".xml,.musicxml" required>
+      <button type="submit">Analysieren</button>
+    </form>
+
+    <pre id="result" class="result"></pre>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

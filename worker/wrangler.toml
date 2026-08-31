@@ -1,0 +1,13 @@
+name = "notensoftware"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+
+# D1 und R2 werden angebunden, sobald es Daten zu speichern gibt.
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "notensoftware"
+# database_id = "TODO"
+
+# [[r2_buckets]]
+# binding = "FILES"
+# bucket_name = "notensoftware-files"

@@ -1,0 +1,36 @@
+// Notensoftware — Worker-Einstiegspunkt.
+// Reines JavaScript, kein Build-Schritt. Neue Routen hier eintragen.
+
+import { analyzeMusicXML } from "./musicxml.js";
+
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/api/health") {
+      return json({ ok: true, service: "notensoftware" });
+    }
+
+    if (url.pathname === "/api/analyze-musicxml" && request.method === "POST") {
+      const xmlText = await request.text();
+      if (!xmlText.trim()) {
+        return json({ error: "Keine MusicXML-Daten im Request-Body." }, 400);
+      }
+      try {
+        const result = analyzeMusicXML(xmlText);
+        return json(result);
+      } catch (err) {
+        return json({ error: `MusicXML konnte nicht gelesen werden: ${err.message}` }, 400);
+      }
+    }
+
+    return json({ error: "Nicht gefunden." }, 404);
+  },
+};
+
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
