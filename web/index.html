@@ -48,13 +48,16 @@
         <input id="composeTempo" type="number" value="108" min="20" max="240">
       </label>
       <label>Takte
-        <input id="composeBars" type="number" value="8" min="1" max="32">
+        <input id="composeBars" type="number" value="8" min="1" max="64">
       </label>
       <label>Instrumente (Komma-getrennt)
         <input id="composeInstruments" value="Flöte, Klarinette, Horn in F, Trompete">
       </label>
       <button type="submit">Komposition vorschlagen</button>
     </form>
+    <p class="hint">Viele Takte × viele Instrumente können die Antwortlänge der KI
+      sprengen — dann kommt eine klare Fehlermeldung statt eines kaputten Ergebnisses.
+      Im Zweifel lieber weniger Instrumente oder in zwei Durchgängen komponieren.</p>
 
     <div id="composeResult" class="result"></div>
   </main>

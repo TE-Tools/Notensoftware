@@ -70,6 +70,13 @@ Secret `ANTHROPIC_API_KEY` im Worker (Cloudflare Dashboard → `notensoftware` �
 Variables and Secrets → Secret hinzufügen) — ohne das Secret antwortet die Route mit
 einer klaren Fehlermeldung statt eines kaputten Ergebnisses.
 
+**Obergrenze:** `max_tokens: 16000` (nicht gestreamte Antwort, bewusst unter der
+Timeout-Schwelle). Reicht erfahrungsgemäß für ~8 Takte × 4 Stimmen locker; deutlich
+mehr Takte × mehr Stimmen können die Antwort sprengen — dann kommt eine klare
+„abgeschnitten"-Fehlermeldung (`stop_reason: max_tokens`) statt eines kaputten
+Ergebnisses. Für wirklich lange Stücke müsste die Route auf Streaming umgestellt werden
+(noch nicht gemacht).
+
 „Arrangement" eines hochgeladenen Stücks (bestehende Melodie automatisch auf neue
 Instrumente verteilen) ist über `theme` als Freitext-Hinweis grob möglich, aber noch
 nicht direkt an `analyze-musicxml` angebunden — das wäre der nächste Ausbauschritt.
