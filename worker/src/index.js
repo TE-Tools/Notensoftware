@@ -2,6 +2,7 @@
 // Reines JavaScript, kein Build-Schritt. Neue Routen hier eintragen.
 
 import { analyzeMusicXML } from "./musicxml.js";
+import { generateMusicXML } from "./musicxml-export.js";
 
 export default {
   async fetch(request, env, ctx) {
@@ -22,6 +23,32 @@ export default {
       } catch (err) {
         return json({ error: `MusicXML konnte nicht gelesen werden: ${err.message}` }, 400);
       }
+    }
+
+    if (url.pathname === "/api/generate-musicxml" && request.method === "POST") {
+      let spec;
+      try {
+        spec = await request.json();
+      } catch {
+        return json({ error: "Ungültiges JSON im Request-Body." }, 400);
+      }
+      try {
+        const xml = generateMusicXML(spec);
+        return new Response(xml, {
+          headers: {
+            "content-type": "application/vnd.recordare.musicxml+xml; charset=utf-8",
+            "content-disposition": 'attachment; filename="notensoftware.musicxml"',
+          },
+        });
+      } catch (err) {
+        return json({ error: `MusicXML konnte nicht erzeugt werden: ${err.message}` }, 400);
+      }
+    }
+
+    // Statische PWA-Oberfläche (web/) für alles andere, sofern Asset-Binding vorhanden
+    // (fehlt in Tests/lokalen Aufrufen ohne wrangler dev).
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
     }
 
     return json({ error: "Nicht gefunden." }, 404);

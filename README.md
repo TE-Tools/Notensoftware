@@ -14,8 +14,38 @@ Konto, keine gemeinsame Datenbank, kein gemeinsames Modulsystem).
 
 ## Stand
 
-Läuft live: https://notensoftware.thomaselsen84.workers.dev — noch ohne Musiklogik
-außer dem MusicXML-Analyse-Grundgerüst.
+Läuft live: https://notensoftware.thomaselsen84.workers.dev
+
+## API
+
+| Route | Zweck |
+|---|---|
+| `GET /api/health` | Lebenszeichen |
+| `POST /api/analyze-musicxml` | MusicXML-Datei im Body → Stimmen, Notenanzahl, Tonumfang je Stimme |
+| `POST /api/generate-musicxml` | JSON-Vorgabe im Body → fertige MusicXML-Datei zum Download |
+
+`generate-musicxml` erwartet:
+
+```json
+{
+  "title": "Mein Stück",
+  "tempo": 108,
+  "keyFifths": -1,
+  "parts": [
+    {
+      "name": "Flöte",
+      "notes": [
+        { "step": "C", "octave": 5, "type": "quarter" },
+        { "rest": true, "type": "quarter" },
+        { "step": "E", "octave": 5, "alter": -1, "type": "eighth" }
+      ]
+    }
+  ]
+}
+```
+
+Noten werden automatisch anhand von `type` (`whole`/`half`/`quarter`/`eighth`/`16th`) in
+4/4-Takte gruppiert. Bindungen über Taktgrenzen und andere Taktarten gibt es noch nicht.
 
 ## Deploy
 
@@ -57,8 +87,9 @@ kein zweiter Server nötig.
 ```
 worker/       Cloudflare Worker (API)
   src/
-    index.js         Router / Einstiegspunkt
-    musicxml.js       MusicXML-Parser (lesen)
+    index.js             Router / Einstiegspunkt
+    musicxml.js          MusicXML-Parser (lesen)
+    musicxml-export.js   MusicXML-Generator (schreiben)
   wrangler.toml
 web/          PWA-Frontend (Vanilla JS, keine Build-Pipeline)
   index.html
