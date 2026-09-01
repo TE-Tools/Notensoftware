@@ -118,9 +118,14 @@ export function composeWithRules(input) {
 
   const roots = chordProgression(barCount);
 
+  // Kleine, feste Oktavstreuung zwischen gleichrollig besetzten Stimmen — bewusst
+  // begrenzt (nicht proportional zur Instrumentenzahl), sonst würden bei großen
+  // Besetzungen (z. B. volles Blasorchester mit 20+ Stimmen) Oktaven weit außerhalb
+  // des gültigen Bereichs (0–9) entstehen.
+  const OCTAVE_SPREAD = [0, 1, -1, 2, -2];
   const parts = instrumentList.map((name, i) => {
     const role = ROLES[i % ROLES.length];
-    const octaveShift = Math.floor(i / ROLES.length) * (i % 2 === 0 ? 1 : -1);
+    const octaveShift = OCTAVE_SPREAD[i % OCTAVE_SPREAD.length];
     return { name, role, notes: buildPart(role, fifths, roots, octaveShift) };
   });
 

@@ -79,3 +79,12 @@ test("composeWithRules funktioniert auch mit vielen Takten ohne Timeout-Risiko (
   assert.ok(Date.now() - start < 1000); // deutlich unter jeder sinnvollen Timeout-Schwelle
   assert.match(xml, /<score-partwise/);
 });
+
+test("composeWithRules: Oktaven bleiben auch bei großer Besetzung (30 Stimmen) gültig", () => {
+  const instruments = Array.from({ length: 30 }, (_, i) => `Stimme ${i + 1}`);
+  const { spec } = composeWithRules({ bars: 8, instruments });
+  // Wirft in generateMusicXML, falls irgendeine Oktave außerhalb 0–9 landet:
+  const xml = generateMusicXML(spec);
+  assert.equal(spec.parts.length, 30);
+  assert.match(xml, /<score-partwise/);
+});
