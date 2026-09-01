@@ -1,6 +1,8 @@
 name = "notensoftware"
 main = "src/index.js"
 compatibility_date = "2026-08-01"
+# Für @anthropic-ai/sdk (nutzt intern ein paar Node-APIs).
+compatibility_flags = ["nodejs_compat"]
 
 # Statische PWA-Oberfläche direkt vom Worker ausliefern (Workers Assets) — kein
 # separates Cloudflare-Pages-Projekt nötig. Anfragen, die zu keiner Datei in web/

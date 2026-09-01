@@ -21,6 +21,16 @@ jobs:
             exit 1
           fi
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Abhängigkeiten liegen im Repo-Root (package.json), nicht in worker/ — npm
+      # install hier, damit wrangler beim Bundling node_modules/@anthropic-ai/sdk
+      # findet (Node-Modulauflösung läuft von worker/src/index.js nach oben).
+      - name: Abhängigkeiten installieren
+        run: npm install
+
       - name: Worker deployen
         uses: cloudflare/wrangler-action@v3
         with:

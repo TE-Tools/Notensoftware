@@ -31,6 +31,32 @@
 
     <button id="generateBtn">Testbeispiel erzeugen</button>
     <div id="generateResult" class="result"></div>
+
+    <h1>KI-Komposition / Arrangement</h1>
+    <p>Dritter Baustein: aus einer kurzen Idee lässt Claude ein komplettes, spielbares
+      Stück entwerfen (Form, Motiv, Instrumentation) — die eigentliche MusicXML-Datei
+      baut weiterhin unser eigener, getesteter Code daraus.</p>
+
+    <form id="composeForm" class="stacked">
+      <label>Idee
+        <textarea id="composeIdea" rows="2" placeholder="z. B. festlich, episch, Rhein bei Nacht" required></textarea>
+      </label>
+      <label>Stil
+        <input id="composeStyle" placeholder="sinfonisches Blasorchester" value="sinfonisches Blasorchester">
+      </label>
+      <label>Tempo (bpm)
+        <input id="composeTempo" type="number" value="108" min="20" max="240">
+      </label>
+      <label>Takte
+        <input id="composeBars" type="number" value="8" min="1" max="32">
+      </label>
+      <label>Instrumente (Komma-getrennt)
+        <input id="composeInstruments" value="Flöte, Klarinette, Horn in F, Trompete">
+      </label>
+      <button type="submit">Komposition vorschlagen</button>
+    </form>
+
+    <div id="composeResult" class="result"></div>
   </main>
 
   <script src="app.js"></script>

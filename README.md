@@ -7,9 +7,8 @@ Konto, keine gemeinsame Datenbank, kein gemeinsames Modulsystem).
 ## Idee
 
 - MusicXML einlesen und analysieren (Stimmen, Umfänge, Instrumentierung)
-- Kompositions-/Arrangement-Vorschläge (Form, Harmonik, Instrumentation) — zunächst
-  regelbasiert, KI-Anbindung später
-- MusicXML-Export, der in Sibelius/Capella sauber aufgeht
+- MusicXML-Export, der in Sibelius/Capella/MuseScore sauber aufgeht
+- KI-Kompositions-/Arrangement-Vorschläge (Form, Motiv, Harmonik, Instrumentation)
 - PWA-Oberfläche: Projekt anlegen, Quelle wählen (Datei/Link), Ergebnis herunterladen
 
 ## Stand
@@ -23,6 +22,7 @@ Läuft live: https://notensoftware.thomaselsen84.workers.dev
 | `GET /api/health` | Lebenszeichen |
 | `POST /api/analyze-musicxml` | MusicXML-Datei im Body → Stimmen, Notenanzahl, Tonumfang je Stimme |
 | `POST /api/generate-musicxml` | JSON-Vorgabe im Body → fertige MusicXML-Datei zum Download |
+| `POST /api/compose` | Idee im Body → Claude schlägt eine komplette Komposition vor, Antwort enthält Erklärung + fertige MusicXML |
 
 `generate-musicxml` erwartet:
 
@@ -47,6 +47,33 @@ Läuft live: https://notensoftware.thomaselsen84.workers.dev
 Noten werden automatisch anhand von `type` (`whole`/`half`/`quarter`/`eighth`/`16th`) in
 4/4-Takte gruppiert. Bindungen über Taktgrenzen und andere Taktarten gibt es noch nicht.
 
+`compose` erwartet:
+
+```json
+{
+  "idea": "festlich, episch, Rhein bei Nacht",
+  "style": "sinfonisches Blasorchester",
+  "tempo": 108,
+  "bars": 8,
+  "instruments": ["Flöte", "Klarinette", "Horn in F", "Trompete"],
+  "theme": "optional: vorgegebenes Motiv/Material, das arrangiert werden soll"
+}
+```
+
+Nur `idea` ist Pflicht, der Rest hat sinnvolle Defaults. Antwort:
+`{ "explanation": "...", "spec": {...gleiche Form wie bei generate-musicxml...}, "xml": "<?xml ...>" }`.
+
+Claude liefert **keine** rohe MusicXML — nur strukturierte Noten-Daten im selben Format
+wie `generate-musicxml`, validiert über `output_config.format` (JSON-Schema, garantiert
+gültiges JSON). Die eigentliche Partitur baut weiterhin `musicxml-export.js`. Braucht das
+Secret `ANTHROPIC_API_KEY` im Worker (Cloudflare Dashboard → `notensoftware` → Settings →
+Variables and Secrets → Secret hinzufügen) — ohne das Secret antwortet die Route mit
+einer klaren Fehlermeldung statt eines kaputten Ergebnisses.
+
+„Arrangement" eines hochgeladenen Stücks (bestehende Melodie automatisch auf neue
+Instrumente verteilen) ist über `theme` als Freitext-Hinweis grob möglich, aber noch
+nicht direkt an `analyze-musicxml` angebunden — das wäre der nächste Ausbauschritt.
+
 ## Deploy
 
 Ein Push auf `main`, der `worker/` verändert, deployt automatisch über
@@ -67,6 +94,7 @@ Frameworks.
 | Baustein | Womit |
 |---|---|
 | Backend | Cloudflare Workers, reines JavaScript |
+| KI | Claude (`@anthropic-ai/sdk`), `claude-opus-5`, strukturierte JSON-Ausgabe |
 | Datenbank | Cloudflare D1 (SQLite) |
 | Dateien (MusicXML, Uploads) | Cloudflare R2 |
 | Frontend | Vanilla HTML/CSS/JS, ausgeliefert vom Worker selbst (Workers Assets) |
@@ -90,6 +118,7 @@ worker/       Cloudflare Worker (API)
     index.js             Router / Einstiegspunkt
     musicxml.js          MusicXML-Parser (lesen)
     musicxml-export.js   MusicXML-Generator (schreiben)
+    compose.js           Claude-Anbindung für Kompositions-/Arrangement-Vorschläge
   wrangler.toml
 web/          PWA-Frontend (Vanilla JS, keine Build-Pipeline)
   index.html

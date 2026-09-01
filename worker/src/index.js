@@ -3,6 +3,7 @@
 
 import { analyzeMusicXML } from "./musicxml.js";
 import { generateMusicXML } from "./musicxml-export.js";
+import { composeArrangement } from "./compose.js";
 
 export default {
   async fetch(request, env, ctx) {
@@ -42,6 +43,35 @@ export default {
         });
       } catch (err) {
         return json({ error: `MusicXML konnte nicht erzeugt werden: ${err.message}` }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/compose" && request.method === "POST") {
+      let input;
+      try {
+        input = await request.json();
+      } catch {
+        return json({ error: "Ungültiges JSON im Request-Body." }, 400);
+      }
+
+      let composed;
+      try {
+        composed = await composeArrangement(input, env);
+      } catch (err) {
+        return json({ error: err.message }, err.status || 502);
+      }
+
+      try {
+        const xml = generateMusicXML(composed.spec);
+        return json({ explanation: composed.explanation, spec: composed.spec, xml });
+      } catch (err) {
+        return json(
+          {
+            error: `KI-Vorschlag ließ sich nicht in eine Partitur umsetzen: ${err.message} ` +
+              `Bitte erneut versuchen.`,
+          },
+          502
+        );
       }
     }
 

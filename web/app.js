@@ -60,3 +60,51 @@ generateBtn.addEventListener("click", async () => {
     generateResult.textContent = `Fehler: ${err.message}`;
   }
 });
+
+const composeForm = document.getElementById("composeForm");
+const composeResult = document.getElementById("composeResult");
+
+composeForm.addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const idea = document.getElementById("composeIdea").value.trim();
+  if (!idea) return;
+
+  const instruments = document
+    .getElementById("composeInstruments")
+    .value.split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  composeResult.textContent = "Claude komponiert … (kann einen Moment dauern)";
+  try {
+    const res = await fetch("/api/compose", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        idea,
+        style: document.getElementById("composeStyle").value.trim() || undefined,
+        tempo: Number(document.getElementById("composeTempo").value) || undefined,
+        bars: Number(document.getElementById("composeBars").value) || undefined,
+        instruments: instruments.length > 0 ? instruments : undefined,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Unbekannter Fehler");
+
+    const blob = new Blob([data.xml], { type: "application/vnd.recordare.musicxml+xml" });
+    const url = URL.createObjectURL(blob);
+    composeResult.innerHTML =
+      `<p><b>${escapeHtml(data.spec.title || "Ohne Titel")}</b></p>` +
+      `<p>${escapeHtml(data.explanation)}</p>` +
+      `<a href="${url}" download="komposition.musicxml">komposition.musicxml herunterladen</a>`;
+  } catch (err) {
+    composeResult.textContent = `Fehler: ${err.message}`;
+  }
+});
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}

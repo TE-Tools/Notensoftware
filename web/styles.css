@@ -50,3 +50,34 @@ button {
   white-space: pre-wrap;
   min-height: 3rem;
 }
+
+form.stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+form.stacked label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+input, textarea {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid #33335a;
+  border-radius: 6px;
+  padding: 0.5rem;
+  font: inherit;
+}
+
+form.stacked button {
+  align-self: flex-start;
+  margin-top: 0.5rem;
+}
+
+.result a {
+  color: var(--accent);
+}
