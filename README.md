@@ -14,24 +14,20 @@ Konto, keine gemeinsame Datenbank, kein gemeinsames Modulsystem).
 
 ## Stand
 
-Gerade erst angelegt. Noch keine Musiklogik — dieses Grundgerüst ist der Ausgangspunkt.
-**Noch kein Live-Deploy.** Der Deploy-Workflow ist eingerichtet, läuft aber erst, sobald
-die Secrets (siehe unten) im Repo hinterlegt sind.
+Läuft live: https://notensoftware.thomaselsen84.workers.dev — noch ohne Musiklogik
+außer dem MusicXML-Analyse-Grundgerüst.
 
-## Deploy einrichten (einmalig)
+## Deploy
 
-Ein Merge auf `main` soll wie bei den anderen Cloudflare-Projekten automatisch
-ausliefern — Worker über `.github/workflows/worker-deploy.yml`, Frontend über
-Cloudflare Pages. Damit das läuft, fehlt noch:
+Ein Push auf `main`, der `worker/` verändert, deployt automatisch über
+`.github/workflows/worker-deploy.yml` (`CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID`
+als Repo-Secrets hinterlegt). **Kein separates Cloudflare-Pages-Projekt** — das
+Frontend unter `web/` liefert derselbe Worker direkt mit aus (Workers Assets, siehe
+`worker/wrangler.toml`). Anfragen, die zu keiner Datei in `web/` passen (z. B.
+`/api/...`), gehen an `worker/src/index.js`.
 
-1. **Repo-Secrets** (GitHub → Settings → Secrets and variables → Actions):
-   `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` — dieselben Werte wie bei den
-   anderen TE-Tools-Projekten
-2. **Cloudflare Pages** einmalig mit diesem Repo verbinden (Pages-Projekt → Build-Output
-   `web/`, kein Build-Befehl)
-
-Ohne Schritt 1 bricht der Workflow beim Push kontrolliert mit klarer Fehlermeldung ab,
-statt einen halben Deploy zu hinterlassen.
+Ohne die Secrets bricht der Workflow beim Push kontrolliert mit klarer Fehlermeldung
+ab, statt einen halben Deploy zu hinterlassen.
 
 ## Technik
 
@@ -43,7 +39,7 @@ Frameworks.
 | Backend | Cloudflare Workers, reines JavaScript |
 | Datenbank | Cloudflare D1 (SQLite) |
 | Dateien (MusicXML, Uploads) | Cloudflare R2 |
-| Frontend | Cloudflare Pages, Vanilla HTML/CSS/JS |
+| Frontend | Vanilla HTML/CSS/JS, ausgeliefert vom Worker selbst (Workers Assets) |
 | Tests | `node:sqlite` fürs Backend, kein Framework |
 
 ## Lokal starten
@@ -53,8 +49,8 @@ npm install -g wrangler   # falls noch nicht vorhanden
 cd worker && wrangler dev
 ```
 
-Frontend liegt unter `web/` und wird ohne Build direkt von Pages ausgeliefert (lokal
-z. B. mit `npx serve web` oder `wrangler pages dev web`).
+`wrangler dev` liefert API **und** die Dateien aus `web/` auf demselben lokalen Port —
+kein zweiter Server nötig.
 
 ## Struktur
 

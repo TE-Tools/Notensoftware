@@ -2,6 +2,13 @@ name = "notensoftware"
 main = "src/index.js"
 compatibility_date = "2026-08-01"
 
+# Statische PWA-Oberfläche direkt vom Worker ausliefern (Workers Assets) — kein
+# separates Cloudflare-Pages-Projekt nötig. Anfragen, die zu keiner Datei in web/
+# passen (z. B. /api/...), gehen automatisch an den fetch()-Handler in src/index.js.
+[assets]
+directory = "../web"
+binding = "ASSETS"
+
 # D1 und R2 werden angebunden, sobald es Daten zu speichern gibt.
 # [[d1_databases]]
 # binding = "DB"
