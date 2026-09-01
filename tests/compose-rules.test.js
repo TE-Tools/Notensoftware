@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { composeWithRules, majorScale, degreeToNote } from "../worker/src/compose-rules.js";
+import { composeWithRules, majorScale, degreeToNote, assignFamily } from "../worker/src/compose-rules.js";
 import { generateMusicXML } from "../worker/src/musicxml-export.js";
 import { analyzeMusicXML } from "../worker/src/musicxml.js";
 
@@ -61,15 +61,52 @@ test("composeWithRules lehnt ungültige keyFifths ab", () => {
   assert.throws(() => composeWithRules({ keyFifths: 10 }), /keyFifths/);
 });
 
-test("composeWithRules: explanation nutzt korrekte Verbform (Singular/Plural)", () => {
-  // Mit 4 Instrumenten (Standard-Rollen-Zyklus 3) trägt eine Rolle zwei Stimmen.
-  const { explanation } = composeWithRules({
-    instruments: ["Flöte", "Klarinette", "Horn in F", "Trompete"],
+test("assignFamily ordnet bekannte Instrumente korrekt zu", () => {
+  assert.equal(assignFamily("Piccoloflöte"), 0);
+  assert.equal(assignFamily("Flöte 1"), 0);
+  assert.equal(assignFamily("Klarinette 2"), 1);
+  assert.equal(assignFamily("Bassklarinette"), 1); // enthält "klarinette"
+  assert.equal(assignFamily("Baritonsaxofon"), 2); // "sax", nicht "Tenorhorn"-Familie
+  assert.equal(assignFamily("Trompete 3"), 3);
+  assert.equal(assignFamily("Horn in F 1"), 4);
+  assert.equal(assignFamily("Fagott"), 4);
+  assert.equal(assignFamily("Posaune 1"), 5);
+  assert.equal(assignFamily("Euphonium"), 5);
+  assert.equal(assignFamily("Tuba"), 6);
+  assert.equal(assignFamily("Pauken"), 6);
+});
+
+test("assignFamily verteilt unbekannte Namen deterministisch (nicht alle in eine Familie)", () => {
+  const a = assignFamily("Zithermandoline");
+  const b = assignFamily("Zithermandoline");
+  assert.equal(a, b); // deterministisch
+  assert.ok(a >= 0 && a < 7);
+});
+
+test("composeWithRules: Instrumente derselben Familie spielen identisches Material", () => {
+  const { spec } = composeWithRules({
+    instruments: ["Klarinette 1", "Klarinette 2", "Bassklarinette"], // alle Familie 1
   });
-  assert.match(explanation, /Flöte, Trompete tragen die Melodie/);
-  // Mit nur einer Stimme pro Rolle muss die Einzahl stehen:
-  const single = composeWithRules({ instruments: ["Flöte", "Klarinette", "Horn in F"] });
-  assert.match(single.explanation, /Flöte trägt die Melodie/);
+  assert.deepEqual(spec.parts[0].notes, spec.parts[1].notes);
+  assert.deepEqual(spec.parts[1].notes, spec.parts[2].notes);
+});
+
+test("composeWithRules: reduziert große Besetzung in der Erklärung auf die tatsächlichen Familien", () => {
+  const instruments = [
+    "Piccoloflöte", "Flöte 1", "Flöte 2", "Oboe", "Fagott",
+    "Es-Klarinette", "Klarinette 1", "Klarinette 2", "Bassklarinette",
+    "Altsaxofon", "Tenorsaxofon", "Baritonsaxofon",
+    "Trompete 1", "Trompete 2", "Flügelhorn",
+    "Horn in F 1", "Horn in F 2",
+    "Posaune 1", "Posaune 2", "Euphonium",
+    "Tuba", "Pauken",
+  ];
+  const { explanation, spec } = composeWithRules({ bars: 8, instruments });
+  assert.equal(spec.parts.length, 22); // 24-Notenzeilen-Fall, hier verkürzt getestet
+  assert.match(explanation, /22 Notenzeilen, gruppiert auf \d tatsächlich unterschiedliche Linien/);
+  // Nie mehr als 7 tatsächliche Linien, unabhängig von der Instrumentenzahl:
+  const distinctLines = new Set(spec.parts.map((p) => JSON.stringify(p.notes)));
+  assert.ok(distinctLines.size <= 7);
 });
 
 test("composeWithRules funktioniert auch mit vielen Takten ohne Timeout-Risiko (rein synchron)", () => {

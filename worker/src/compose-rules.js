@@ -2,13 +2,15 @@
 //
 // Echte (wenn auch einfache) Musiktheorie als Code statt eines Sprachmodells:
 // Tonleiter aus der Vorzeichenzahl (fifths) ableiten, eine simple Kadenz-Akkordfolge
-// abspulen, drei feste Rollen (Melodie/Pad/Arpeggio) auf die angegebenen Stimmen
-// verteilen. Deterministisch: dieselbe Eingabe ergibt immer dasselbe Ergebnis — das
-// unterscheidet diesen Modus bewusst von /api/compose (Claude).
+// abspulen, sieben feste Klangfamilien (Rolle + Register) auf die angegebenen
+// Instrumente verteilen — Instrumente derselben Familie spielen exakt dasselbe
+// Material (unisono/oktaviert), wie in echten Bandpartituren üblich. Deterministisch:
+// dieselbe Eingabe ergibt immer dasselbe Ergebnis — das unterscheidet diesen Modus
+// bewusst von /api/compose (Claude).
 //
 // Ehrlich gesagt: musikalisch simpler als Claudes Vorschläge (keine freie
-// Motiv-Entwicklung, keine Dynamik-Feinheiten) — dafür sofort da, kostenlos, und
-// beliebig oft wiederholbar.
+// Motiv-Entwicklung, keine Dynamik-Feinheiten, keine Transposition) — dafür sofort
+// da, kostenlos, und beliebig oft wiederholbar, auch bei großen Besetzungen.
 
 const LETTERS = ["C", "D", "E", "F", "G", "A", "B"];
 const SHARP_ORDER = ["F", "C", "G", "D", "A", "E", "B"];
@@ -25,7 +27,33 @@ const GERMAN_KEY_NAMES = {
 const ROMAN = ["I", "ii", "iii", "IV", "V", "vi", "vii°"];
 const DEFAULT_INSTRUMENTS = ["Flöte", "Klarinette", "Horn in F", "Trompete"];
 const DEFAULT_BARS = 8;
-const ROLES = ["melody", "arpeggio", "pad"];
+
+// Sieben Klangfamilien wie im "Particell" einer Bandpartitur — Instrumente, deren
+// Name auf eines der Stichworte passt, landen in derselben Familie und spielen
+// dieselbe Linie, nur in der Familien-Grundoktave. Reihenfolge zählt (erster Treffer
+// gewinnt); Stichworte bewusst spezifisch gewählt, damit z. B. "Baritonsaxofon"
+// nicht versehentlich bei "Tenorhorn" landet.
+const FAMILIES = [
+  { label: "Piccolo/Flöte", keywords: ["piccolo", "flöte", "flute"], role: "melody", octave: 5 },
+  { label: "Oboe/Klarinette/Glockenspiel", keywords: ["oboe", "englischhorn", "klarinette", "clarinet", "glockenspiel"], role: "arpeggio", octave: 5 },
+  { label: "Saxofone", keywords: ["sax"], role: "pad", octave: 4 },
+  { label: "Trompete/Flügelhorn", keywords: ["trompete", "trumpet", "flügelhorn", "kornett"], role: "melody", octave: 4 },
+  { label: "Horn/Fagott", keywords: ["waldhorn", "horn in f", "fagott", "bassoon"], role: "arpeggio", octave: 4 },
+  { label: "Posaune/Tenorhorn/Euphonium", keywords: ["posaune", "trombone", "tenorhorn", "euphonium"], role: "pad", octave: 3 },
+  { label: "Tuba/Pauken", keywords: ["tuba", "pauke", "timpani", "kontrabass"], role: "pad", octave: 2 },
+];
+
+export function assignFamily(name) {
+  const lower = name.toLowerCase();
+  for (let i = 0; i < FAMILIES.length; i++) {
+    if (FAMILIES[i].keywords.some((k) => lower.includes(k))) return i;
+  }
+  // Unbekannter Name: deterministisch (Hash) auf eine Familie verteilen, statt
+  // alles in eine Sammelfamilie zu werfen.
+  let hash = 0;
+  for (const c of name) hash = (hash * 31 + c.charCodeAt(0)) >>> 0;
+  return hash % FAMILIES.length;
+}
 
 function keySignatureAlters(fifths) {
   const alters = {};
@@ -57,13 +85,14 @@ export function degreeToNote(fifths, scaleDegree, baseOctave, type, rest = false
   const idx = ((scaleDegree % 7) + 7) % 7;
   const octaveShift = Math.floor(scaleDegree / 7);
   const note = scale[idx];
-  return { step: note.step, octave: baseOctave + octaveShift, alter: note.alter, rest: false, type };
+  const octave = Math.max(0, Math.min(9, baseOctave + octaveShift));
+  return { step: note.step, octave, alter: note.alter, rest: false, type };
 }
 
 // Einfache Kadenz-Akkordfolge: I–IV–V–I je 4-Takt-Block, letzter Takt immer Tonika,
 // vorletzter Takt (falls vorhanden) immer Dominante — klassischer Ganzschluss,
 // unabhängig davon, wo der Block gerade steht.
-function chordProgression(bars) {
+export function chordProgression(bars) {
   const cell = [0, 3, 4, 0];
   const roots = [];
   for (let i = 0; i < bars; i++) roots.push(cell[i % 4]);
@@ -72,35 +101,32 @@ function chordProgression(bars) {
   return roots;
 }
 
-function melodyBar(fifths, root, barIndex, isLastBar) {
+function melodyBar(fifths, root, baseOctave, barIndex, isLastBar) {
   if (isLastBar) {
-    return [degreeToNote(fifths, 0, 5, "whole")];
+    return [degreeToNote(fifths, 0, baseOctave, "whole")];
   }
   const shape = barIndex % 2 === 0 ? [0, 2, 4, 2] : [4, 2, 0, 2];
-  const type = barIndex % 2 === 0 ? "quarter" : "quarter";
-  return shape.map((offset) => degreeToNote(fifths, root + offset, 5, type));
+  return shape.map((offset) => degreeToNote(fifths, root + offset, baseOctave, "quarter"));
 }
 
-function padBar(fifths, root) {
-  return [degreeToNote(fifths, root, 4, "whole")];
+function padBar(fifths, root, baseOctave) {
+  return [degreeToNote(fifths, root, baseOctave, "whole")];
 }
 
-function arpeggioBar(fifths, root) {
+function arpeggioBar(fifths, root, baseOctave) {
   const shape = [0, 2, 4, 2, 0, 2, 4, 2];
-  return shape.map((offset) => degreeToNote(fifths, root + offset, 4, "eighth"));
+  return shape.map((offset) => degreeToNote(fifths, root + offset, baseOctave, "eighth"));
 }
 
-function buildPart(role, fifths, roots, octaveShift) {
+export function buildFamilyLine(role, fifths, roots, baseOctave) {
   const notes = [];
   roots.forEach((root, i) => {
     const isLast = i === roots.length - 1;
     let bar;
-    if (role === "melody") bar = melodyBar(fifths, root, i, isLast);
-    else if (role === "arpeggio") bar = arpeggioBar(fifths, root);
-    else bar = padBar(fifths, root);
-    for (const note of bar) {
-      notes.push(note.rest ? note : { ...note, octave: note.octave + octaveShift });
-    }
+    if (role === "melody") bar = melodyBar(fifths, root, baseOctave, i, isLast);
+    else if (role === "arpeggio") bar = arpeggioBar(fifths, root, baseOctave);
+    else bar = padBar(fifths, root, baseOctave);
+    notes.push(...bar);
   });
   return notes;
 }
@@ -118,29 +144,40 @@ export function composeWithRules(input) {
 
   const roots = chordProgression(barCount);
 
-  // Kleine, feste Oktavstreuung zwischen gleichrollig besetzten Stimmen — bewusst
-  // begrenzt (nicht proportional zur Instrumentenzahl), sonst würden bei großen
-  // Besetzungen (z. B. volles Blasorchester mit 20+ Stimmen) Oktaven weit außerhalb
-  // des gültigen Bereichs (0–9) entstehen.
-  const OCTAVE_SPREAD = [0, 1, -1, 2, -2];
+  // Eine Notenfolge pro tatsächlich genutzter Familie berechnen (nicht pro
+  // Instrument) — Instrumente derselben Familie teilen sich exakt dieselbe Linie.
+  const familyIndexByInstrument = instrumentList.map(assignFamily);
+  const usedFamilyIndices = [...new Set(familyIndexByInstrument)].sort((a, b) => a - b);
+  const lineByFamily = new Map(
+    usedFamilyIndices.map((fi) => {
+      const family = FAMILIES[fi];
+      return [fi, buildFamilyLine(family.role, fifths, roots, family.octave)];
+    })
+  );
+
   const parts = instrumentList.map((name, i) => {
-    const role = ROLES[i % ROLES.length];
-    const octaveShift = OCTAVE_SPREAD[i % OCTAVE_SPREAD.length];
-    return { name, role, notes: buildPart(role, fifths, roots, octaveShift) };
+    const fi = familyIndexByInstrument[i];
+    return { name, familyIndex: fi, notes: lineByFamily.get(fi) };
   });
 
   const chordSymbols = roots.map((r) => ROMAN[r]);
-  const byRole = (role) => parts.filter((p) => p.role === role).map((p) => p.name);
-  const listWithVerb = (names, singular, plural) =>
-    names.length === 0 ? `— ${plural}` : `${names.join(", ")} ${names.length === 1 ? singular : plural}`;
   const title = idea ? `${idea} (regelbasiert)` : "Ohne Titel (regelbasiert)";
+  const familyLines = usedFamilyIndices
+    .map((fi) => {
+      const names = parts.filter((p) => p.familyIndex === fi).map((p) => p.name);
+      const roleText = { melody: "Melodie", arpeggio: "gebrochene Akkorde (Achtel)", pad: "liegende Grundtöne" }[
+        FAMILIES[fi].role
+      ];
+      return `${names.join("/")}: ${roleText}`;
+    })
+    .join("; ");
   const explanation =
     `Regelbasiert erzeugt, ohne KI-Aufruf: ${barCount} Takte in ${GERMAN_KEY_NAMES[String(fifths)]}, ` +
     `Tempo ${bpm}. Akkordfolge (vereinfachte Kadenz): ${chordSymbols.join(" – ")}. ` +
-    `${listWithVerb(byRole("melody"), "trägt", "tragen")} die Melodie (Akkordtöne, auf-/absteigend), ` +
-    `${listWithVerb(byRole("arpeggio"), "spielt", "spielen")} gebrochene Akkorde in Achteln, ` +
-    `${listWithVerb(byRole("pad"), "hält", "halten")} liegende Grundtöne. Schluss auf dem Grundton. ` +
-    `Deterministisch: dieselbe Eingabe ergibt immer dasselbe Ergebnis.`;
+    `${instrumentList.length} Notenzeilen, gruppiert auf ${usedFamilyIndices.length} tatsächlich ` +
+    `unterschiedliche Linien (Instrumente derselben Klangfamilie spielen unisono/oktaviert dasselbe ` +
+    `Material): ${familyLines}. Schluss auf dem Grundton. Deterministisch: dieselbe Eingabe ergibt ` +
+    `immer dasselbe Ergebnis.`;
 
   return {
     explanation,
