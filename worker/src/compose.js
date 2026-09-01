@@ -92,15 +92,33 @@ export function buildUserPrompt({ idea, style, tempo, instrumentList, bars, them
 }
 
 export function parseComposeResponse(response) {
+  if (response.stop_reason === "refusal") {
+    const category = response.stop_details?.category || "unbekannt";
+    throw new ComposeError(`Die KI hat die Anfrage abgelehnt (Kategorie: ${category}).`, 502);
+  }
+  if (response.stop_reason === "max_tokens") {
+    throw new ComposeError(
+      "Die KI-Antwort wurde mitten im Stück abgeschnitten (max_tokens erreicht) — " +
+        "bitte mit weniger Takten/Instrumenten erneut versuchen.",
+      502
+    );
+  }
+
   const textBlock = (response.content || []).find((b) => b.type === "text");
   if (!textBlock || !textBlock.text) {
     throw new ComposeError("Die KI hat keine Textantwort geliefert.", 502);
   }
+
+  // Sollte dank output_config.format nicht vorkommen, aber zur Sicherheit:
+  // eventuell umgebende ```json-Codezäune entfernen, bevor geparst wird.
+  const cleaned = textBlock.text.trim().replace(/^```(?:json)?\s*|\s*```$/g, "");
+
   let parsed;
   try {
-    parsed = JSON.parse(textBlock.text);
+    parsed = JSON.parse(cleaned);
   } catch {
-    throw new ComposeError("Die KI-Antwort war kein gültiges JSON.", 502);
+    const preview = textBlock.text.slice(0, 300);
+    throw new ComposeError(`Die KI-Antwort war kein gültiges JSON. Anfang der Antwort: ${preview}`, 502);
   }
   const { explanation, ...spec } = parsed;
   if (!explanation || typeof explanation !== "string") {
@@ -144,7 +162,7 @@ export async function composeArrangement(input, env) {
   try {
     response = await client.messages.create({
       model: "claude-opus-5",
-      max_tokens: 4096,
+      max_tokens: 8192,
       thinking: { type: "adaptive" },
       output_config: {
         effort: "high",

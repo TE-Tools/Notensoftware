@@ -79,6 +79,28 @@ test("parseComposeResponse lehnt Antwort ohne Textblock ab", () => {
   assert.throws(() => parseComposeResponse({ content: [] }), /keine Textantwort/);
 });
 
+test("parseComposeResponse erkennt eine Ablehnung (refusal)", () => {
+  assert.throws(
+    () => parseComposeResponse({ stop_reason: "refusal", stop_details: { category: "cyber" }, content: [] }),
+    /abgelehnt.*cyber/
+  );
+});
+
+test("parseComposeResponse erkennt abgeschnittene Antworten (max_tokens)", () => {
+  assert.throws(
+    () => parseComposeResponse({ stop_reason: "max_tokens", content: [] }),
+    /abgeschnitten/
+  );
+});
+
+test("parseComposeResponse entfernt umgebende ```json-Codezäune", () => {
+  const fenced = "```json\n" + JSON.stringify({
+    title: "X", tempo: 100, keyFifths: 0, explanation: "Kurz.", parts: [],
+  }) + "\n```";
+  const { spec } = parseComposeResponse({ content: [{ type: "text", text: fenced }] });
+  assert.equal(spec.title, "X");
+});
+
 test("parseComposeResponse lehnt ungültiges JSON ab", () => {
   assert.throws(
     () => parseComposeResponse({ content: [{ type: "text", text: "kein json" }] }),
