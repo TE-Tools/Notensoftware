@@ -61,6 +61,17 @@ test("composeWithRules lehnt ungültige keyFifths ab", () => {
   assert.throws(() => composeWithRules({ keyFifths: 10 }), /keyFifths/);
 });
 
+test("composeWithRules: explanation nutzt korrekte Verbform (Singular/Plural)", () => {
+  // Mit 4 Instrumenten (Standard-Rollen-Zyklus 3) trägt eine Rolle zwei Stimmen.
+  const { explanation } = composeWithRules({
+    instruments: ["Flöte", "Klarinette", "Horn in F", "Trompete"],
+  });
+  assert.match(explanation, /Flöte, Trompete tragen die Melodie/);
+  // Mit nur einer Stimme pro Rolle muss die Einzahl stehen:
+  const single = composeWithRules({ instruments: ["Flöte", "Klarinette", "Horn in F"] });
+  assert.match(single.explanation, /Flöte trägt die Melodie/);
+});
+
 test("composeWithRules funktioniert auch mit vielen Takten ohne Timeout-Risiko (rein synchron)", () => {
   const start = Date.now();
   const { spec } = composeWithRules({ bars: 64, instruments: ["Flöte", "Klarinette", "Horn in F", "Trompete"] });

@@ -126,13 +126,15 @@ export function composeWithRules(input) {
 
   const chordSymbols = roots.map((r) => ROMAN[r]);
   const byRole = (role) => parts.filter((p) => p.role === role).map((p) => p.name);
+  const listWithVerb = (names, singular, plural) =>
+    names.length === 0 ? `— ${plural}` : `${names.join(", ")} ${names.length === 1 ? singular : plural}`;
   const title = idea ? `${idea} (regelbasiert)` : "Ohne Titel (regelbasiert)";
   const explanation =
     `Regelbasiert erzeugt, ohne KI-Aufruf: ${barCount} Takte in ${GERMAN_KEY_NAMES[String(fifths)]}, ` +
     `Tempo ${bpm}. Akkordfolge (vereinfachte Kadenz): ${chordSymbols.join(" – ")}. ` +
-    `${byRole("melody").join(", ") || "—"} trägt die Melodie (Akkordtöne, auf-/absteigend), ` +
-    `${byRole("arpeggio").join(", ") || "—"} spielt gebrochene Akkorde in Achteln, ` +
-    `${byRole("pad").join(", ") || "—"} hält liegende Grundtöne. Schluss auf dem Grundton. ` +
+    `${listWithVerb(byRole("melody"), "trägt", "tragen")} die Melodie (Akkordtöne, auf-/absteigend), ` +
+    `${listWithVerb(byRole("arpeggio"), "spielt", "spielen")} gebrochene Akkorde in Achteln, ` +
+    `${listWithVerb(byRole("pad"), "hält", "halten")} liegende Grundtöne. Schluss auf dem Grundton. ` +
     `Deterministisch: dieselbe Eingabe ergibt immer dasselbe Ergebnis.`;
 
   return {
