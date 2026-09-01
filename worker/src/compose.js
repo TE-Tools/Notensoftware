@@ -164,8 +164,12 @@ export async function composeArrangement(input, env) {
       model: "claude-opus-5",
       max_tokens: 16000,
       thinking: { type: "adaptive" },
+      // effort "medium" statt "high": Denk-Tokens zählen als Output und werden
+      // mitabgerechnet, auch wenn man sie nie sieht — bei "high" kann das für eine
+      // einzelne Komposition mehrere zig Cent kosten. "medium" spart deutlich, ohne
+      // dass die Ergebnisse (bisher) merklich schlechter wurden.
       output_config: {
-        effort: "high",
+        effort: "medium",
         format: { type: "json_schema", schema: COMPOSE_SCHEMA },
       },
       system: SYSTEM_PROMPT,

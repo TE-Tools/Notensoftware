@@ -23,6 +23,7 @@ Läuft live: https://notensoftware.thomaselsen84.workers.dev
 | `POST /api/analyze-musicxml` | MusicXML-Datei im Body → Stimmen, Notenanzahl, Tonumfang je Stimme |
 | `POST /api/generate-musicxml` | JSON-Vorgabe im Body → fertige MusicXML-Datei zum Download |
 | `POST /api/compose` | Idee im Body → Claude schlägt eine komplette Komposition vor, Antwort enthält Erklärung + fertige MusicXML |
+| `POST /api/compose-rules` | Gleiche Antwortform, aber ohne KI-Aufruf — feste Kadenz + drei Rollen (Melodie/Arpeggio/Pad), regelbasiert, kostenlos, deterministisch |
 
 `generate-musicxml` erwartet:
 
@@ -70,16 +71,41 @@ Secret `ANTHROPIC_API_KEY` im Worker (Cloudflare Dashboard → `notensoftware` �
 Variables and Secrets → Secret hinzufügen) — ohne das Secret antwortet die Route mit
 einer klaren Fehlermeldung statt eines kaputten Ergebnisses.
 
-**Obergrenze:** `max_tokens: 16000` (nicht gestreamte Antwort, bewusst unter der
-Timeout-Schwelle). Reicht erfahrungsgemäß für ~8 Takte × 4 Stimmen locker; deutlich
-mehr Takte × mehr Stimmen können die Antwort sprengen — dann kommt eine klare
-„abgeschnitten"-Fehlermeldung (`stop_reason: max_tokens`) statt eines kaputten
-Ergebnisses. Für wirklich lange Stücke müsste die Route auf Streaming umgestellt werden
-(noch nicht gemacht).
+**Kosten:** `effort: "medium"` (nicht `"high"`) — die „Denk"-Tokens von `thinking:
+adaptive` werden als Output abgerechnet, auch wenn man sie nie sieht. Bei `"high"`
+lagen einzelne Testanfragen bei ~90 Cent, was für eine einzelne Komposition zu viel
+ist. Wer komplett kostenlos bleiben will: `/api/compose-rules` nutzen.
+
+**Obergrenze, live getestet:** 8 Takte × 4 Stimmen laufen zuverlässig durch
+(`max_tokens: 16000`, nicht gestreamt). **24 Takte × 4 Stimmen liefen im Test in
+150 Sekunden gar nicht fertig** (Verbindung lief in den Timeout, ohne Antwort) — die
+nicht gestreamte Anfrage ist für so lange Stücke schlicht zu langsam. Für längere
+Stücke entweder `/api/compose-rules` nutzen (siehe unten) oder `/api/compose` auf
+Streaming umstellen (noch nicht gemacht).
 
 „Arrangement" eines hochgeladenen Stücks (bestehende Melodie automatisch auf neue
 Instrumente verteilen) ist über `theme` als Freitext-Hinweis grob möglich, aber noch
 nicht direkt an `analyze-musicxml` angebunden — das wäre der nächste Ausbauschritt.
+
+### `/api/compose-rules` — regelbasiert, ohne KI
+
+Gleiches Eingabe-/Ausgabeformat wie `/api/compose` (nur `style` und `theme` werden
+ignoriert), aber ohne jeden externen API-Aufruf:
+
+- Tonleiter wird aus `keyFifths` über die Quintenzirkel-Systematik berechnet
+  (`worker/src/compose-rules.js`, `majorScale()`), keine feste Tabelle
+- Akkordfolge: einfache Kadenz I–IV–V–I in 4-Takt-Blöcken, letzter Takt immer
+  Tonika, vorletzter immer Dominante (sauberer Schluss, unabhängig von der Taktzahl)
+- Jede angegebene Stimme bekommt eine feste Rolle (reihum): Melodie (Akkordtöne,
+  auf-/absteigend), Arpeggio (gebrochene Akkorde in Achteln), Pad (liegende
+  Grundtöne)
+- **Deterministisch** — dieselbe Eingabe ergibt immer dasselbe Ergebnis (Test dafür
+  vorhanden), anders als `/api/compose`
+- Läuft synchron im Worker, keine Netzwerk-Anfrage, kein Zeitlimit-Risiko auch bei
+  vielen Takten (siehe Test „funktioniert auch mit vielen Takten")
+
+Ehrlich gesagt: musikalisch simpler als Claudes Vorschläge — keine freie
+Motiv-Entwicklung, keine Dynamik. Dafür kostenlos, sofort, beliebig oft wiederholbar.
 
 ## Deploy
 
@@ -126,6 +152,7 @@ worker/       Cloudflare Worker (API)
     musicxml.js          MusicXML-Parser (lesen)
     musicxml-export.js   MusicXML-Generator (schreiben)
     compose.js           Claude-Anbindung für Kompositions-/Arrangement-Vorschläge
+    compose-rules.js     Regelbasierter Kompositions-Modus, ohne KI-Aufruf
   wrangler.toml
 web/          PWA-Frontend (Vanilla JS, keine Build-Pipeline)
   index.html

@@ -32,16 +32,23 @@
     <button id="generateBtn">Testbeispiel erzeugen</button>
     <div id="generateResult" class="result"></div>
 
-    <h1>KI-Komposition / Arrangement</h1>
-    <p>Dritter Baustein: aus einer kurzen Idee lässt Claude ein komplettes, spielbares
-      Stück entwerfen (Form, Motiv, Instrumentation) — die eigentliche MusicXML-Datei
-      baut weiterhin unser eigener, getesteter Code daraus.</p>
+    <h1>Komposition / Arrangement</h1>
+    <p>Dritter Baustein: aus einer kurzen Idee ein komplettes, spielbares Stück
+      entwerfen — die eigentliche MusicXML-Datei baut in beiden Modi derselbe,
+      getestete Code (<code>musicxml-export.js</code>).</p>
+
+    <div class="mode-switch">
+      <label><input type="radio" name="composeMode" value="ai" checked> Claude
+        <small>kreativer, kostet API-Tokens, kann bei sehr langen Stücken abbrechen</small></label>
+      <label><input type="radio" name="composeMode" value="rules"> Regelbasiert
+        <small>kein API-Aufruf, kostenlos, sofort, mechanischer (feste Kadenz + Rollen)</small></label>
+    </div>
 
     <form id="composeForm" class="stacked">
       <label>Idee
-        <textarea id="composeIdea" rows="2" placeholder="z. B. festlich, episch, Rhein bei Nacht" required></textarea>
+        <textarea id="composeIdea" rows="2" placeholder="z. B. festlich, episch, Rhein bei Nacht"></textarea>
       </label>
-      <label>Stil
+      <label>Stil <small>(nur Claude-Modus)</small>
         <input id="composeStyle" placeholder="sinfonisches Blasorchester" value="sinfonisches Blasorchester">
       </label>
       <label>Tempo (bpm)
@@ -55,9 +62,9 @@
       </label>
       <button type="submit">Komposition vorschlagen</button>
     </form>
-    <p class="hint">Viele Takte × viele Instrumente können die Antwortlänge der KI
+    <p class="hint">Claude: viele Takte × viele Instrumente können die Antwortlänge
       sprengen — dann kommt eine klare Fehlermeldung statt eines kaputten Ergebnisses.
-      Im Zweifel lieber weniger Instrumente oder in zwei Durchgängen komponieren.</p>
+      Regelbasiert: keine dieser Grenzen, dafür ohne freie Motiv-Entwicklung.</p>
 
     <div id="composeResult" class="result"></div>
   </main>

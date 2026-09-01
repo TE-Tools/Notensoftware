@@ -66,8 +66,9 @@ const composeResult = document.getElementById("composeResult");
 
 composeForm.addEventListener("submit", async (ev) => {
   ev.preventDefault();
+  const mode = document.querySelector('input[name="composeMode"]:checked').value;
   const idea = document.getElementById("composeIdea").value.trim();
-  if (!idea) return;
+  if (mode === "ai" && !idea) return;
 
   const instruments = document
     .getElementById("composeInstruments")
@@ -75,18 +76,24 @@ composeForm.addEventListener("submit", async (ev) => {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  composeResult.textContent = "Claude komponiert … (kann einen Moment dauern)";
+  const body = {
+    idea: idea || undefined,
+    tempo: Number(document.getElementById("composeTempo").value) || undefined,
+    bars: Number(document.getElementById("composeBars").value) || undefined,
+    instruments: instruments.length > 0 ? instruments : undefined,
+  };
+  const endpoint = mode === "ai" ? "/api/compose" : "/api/compose-rules";
+  if (mode === "ai") {
+    body.style = document.getElementById("composeStyle").value.trim() || undefined;
+  }
+
+  composeResult.textContent =
+    mode === "ai" ? "Claude komponiert … (kann einen Moment dauern)" : "Erzeuge …";
   try {
-    const res = await fetch("/api/compose", {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        idea,
-        style: document.getElementById("composeStyle").value.trim() || undefined,
-        tempo: Number(document.getElementById("composeTempo").value) || undefined,
-        bars: Number(document.getElementById("composeBars").value) || undefined,
-        instruments: instruments.length > 0 ? instruments : undefined,
-      }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Unbekannter Fehler");

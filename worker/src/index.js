@@ -4,6 +4,7 @@
 import { analyzeMusicXML } from "./musicxml.js";
 import { generateMusicXML } from "./musicxml-export.js";
 import { composeArrangement } from "./compose.js";
+import { composeWithRules } from "./compose-rules.js";
 
 export default {
   async fetch(request, env, ctx) {
@@ -72,6 +73,22 @@ export default {
           },
           502
         );
+      }
+    }
+
+    if (url.pathname === "/api/compose-rules" && request.method === "POST") {
+      let input;
+      try {
+        input = await request.json();
+      } catch {
+        return json({ error: "Ungültiges JSON im Request-Body." }, 400);
+      }
+      try {
+        const composed = composeWithRules(input);
+        const xml = generateMusicXML(composed.spec);
+        return json({ explanation: composed.explanation, spec: composed.spec, xml });
+      } catch (err) {
+        return json({ error: err.message }, 400);
       }
     }
 
